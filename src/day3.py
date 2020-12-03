@@ -7,15 +7,11 @@ class TreeMaze:
             text = fp.read()
         lines = text.split("\n")
         self.data = np.array([list(line) for line in lines])
-        self.n_rows, self.n_columns = self.data.shape
+        self.n_columns = self.data.shape[1]
 
     def is_tree(self, pos):
         row, col = pos
-        if row >= self.n_rows:
-            raise Exception("Too low!")
-        if col >= self.n_columns:
-            col = col % self.n_columns
-
+        col = col % self.n_columns # trees wrap to the right
         char = self.data[row, col]
         return char == "#"
 
@@ -24,10 +20,12 @@ class TreeMaze:
         my_step = np.array((down, over))
 
         n_trees = 0
-        while my_pos[0] < self.n_rows:
-            n_trees += self.is_tree(my_pos)
-            my_pos += my_step
-        return n_trees
+        try:
+            while True:
+                n_trees += self.is_tree(my_pos)
+                my_pos += my_step
+        except IndexError:
+            return n_trees
 
 
 game = TreeMaze()
