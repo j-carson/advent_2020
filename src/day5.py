@@ -1,22 +1,18 @@
 import pandas as pd
 
-
 def seat_id(spot):
     row, col = spot
     return (row * 8) + col
-
 
 def trim_low(bounds):
     """Trims off the lower half of the given bounds"""
     bounds_size = bounds[1] - bounds[0] + 1
     return [bounds[0] + bounds_size // 2, bounds[1]]
 
-
 def trim_high(bounds):
     """Trims off the upper half of the given bounds"""
     bounds_size = bounds[1] - bounds[0] + 1
     return [bounds[0], bounds[1] - bounds_size // 2]
-
 
 def boarding_pass_to_location(pass_):
     """Find the row and column of the given boarding pass,
@@ -50,4 +46,4 @@ if __name__ == "__main__":
     sorted_seatids = sorted(all_seatids)
     s = pd.Series(index=sorted_seatids, data=sorted_seatids)
     gap = s.diff().idxmax()
-    print(gap)
+    print(gap - 1)
