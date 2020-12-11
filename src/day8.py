@@ -69,7 +69,7 @@ if __name__ == "__main__":
         code.append(Instruction(opcode, int(arg)))
 
     # Create a simulator to run the instructions
-    machine = Machine(0, 0, code)
+    machine = Machine(code=code)
 
     # Q1 - what is in the accumulator just before an instruction
     # runs for a second time?
