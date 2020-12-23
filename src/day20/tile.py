@@ -86,27 +86,15 @@ class Tile:
 
         return Tile(new_data)
 
-    def north(self):
-        return self.data[0, :]
-
-    def south(self):
-        return self.data[-1, :]
-
-    def east(self):
-        return self.data[:, -1]
-
-    def west(self):
-        return self.data[:, 0]
-
     def edge(self, edge):
         if edge == Edge.North:
-            return self.north()
+            return self.data[0, :]
         elif edge == Edge.South:
-            return self.south()
-        elif edge == Edge.East:
-            return self.east()
+            return self.data[-1, :]
         elif edge == Edge.West:
-            return self.west()
+            return self.data[:, 0]
+        elif edge == Edge.East:
+            return self.data[:, -1]
         raise ValueError("Unknowned edge")
 
     def match_edges(self, my_side, other):
@@ -121,15 +109,19 @@ class Tile:
 
         raise ValueError("edge match failed")
 
-    def append_right(self, right, debug=True):
-        data_left = self.trim_edge(Edge.East).data
-        data_right = right.trim_edge(Edge.West).data
-        return Tile(np.hstack([data_left, data_right]))
+    @staticmethod
+    def hstack(tiles):
+        return Tile(
+            np.hstack([t.trim_edge(Edge.East).trim_edge(Edge.West).data for t in tiles])
+        )
 
-    def append_below(self, below, debug=True):
-        data_up = self.trim_edge(Edge.South).data
-        data_down = below.trim_edge(Edge.North).data
-        return Tile(np.vstack([data_up, data_down]))
+    @staticmethod
+    def vstack(tiles):
+        return Tile(
+            np.vstack(
+                [t.trim_edge(Edge.North).trim_edge(Edge.South).data for t in tiles]
+            )
+        )
 
     def trim_edge(self, edge):
         if edge == Edge.North:
@@ -143,14 +135,6 @@ class Tile:
 
         raise ValueError("Invalid Edge to trim")
 
-    def trim_all_edges(self):
-        return (
-            self.trim_edge(Edge.North)
-            .trim_edge(Edge.South)
-            .trim_edge(Edge.East)
-            .trim_edge(Edge.West)
-        )
-
     def count_pattern(self, pattern):
         """Count how many time pattern appears in self"""
         me = self.data
@@ -159,6 +143,8 @@ class Tile:
         other = pattern.data
         other_rows, other_cols = other.shape
 
+        # how many rows/columns on "self" we can overlay "other"
+        # before "other" is hanging off the edge of "self"
         walk_cols = my_cols - other_cols
         walk_rows = my_rows - other_rows
 
@@ -172,15 +158,11 @@ class Tile:
         return count
 
 
-@dataclass
 class TilePuzzle:
-    tiles: dict = None
-    layout: np.array = None
-
-    def __post_init__(self):
-        if self.layout is None:
-            nrow = ncol = int(np.sqrt(len(self.tiles)))
-            self.layout = np.empty((nrow, ncol), dtype=np.int64)
+    def __init__(self, tiles):
+        self.tiles = tiles
+        nrow = ncol = int(np.sqrt(len(self.tiles)))
+        self.layout = np.empty((nrow, ncol), dtype=np.int64)
 
     def __getitem__(self, key):
         # return the tile object at layout[key]
@@ -197,18 +179,13 @@ class TilePuzzle:
 
     def combine_pieces(self):
         nrow, ncol = self.layout.shape
-        rows = []
+        assembled_rows = []
+        # assemble tiles in a single row, then stack those rows
         for row in range(nrow):
-            row_agg = self[row, 0]
-            for col in range(1, ncol):
-                row_agg = row_agg.append_right(self[row, col])
-            rows.append(row_agg)
-
-        row_agg = rows[0]
-        for tile in rows[1:]:
-            row_agg = row_agg.append_below(tile)
-
-        return row_agg.trim_all_edges()
+            assembled_rows = assembled_rows + [
+                Tile.hstack([self[row, col] for col in range(ncol)])
+            ]
+        return Tile.vstack(assembled_rows)
 
     def possible_neighbors(self):
         """Return a map of all tileids and the tile ids that could possibly
@@ -326,8 +303,8 @@ class TilePuzzle:
                 below = new_below
                 break
 
-        assert (corner.east() == right.west()).all()
-        assert (corner.south() == below.north()).all()
+        assert (corner.edge(Edge.East) == right.edge(Edge.West)).all()
+        assert (corner.edge(Edge.South) == below.edge(Edge.North)).all()
 
         self[0, 0] = corner
         self[0, 1] = right
